@@ -11,7 +11,7 @@ Tags include Owner, Environment=Production, Region (Modify in the function code)
 
 ### 1. Create the CloudFormation stack
 
-#### Using the AWS Management Console:
+#### a. Using the AWS Management Console:
 - Go to the AWS Management Console. Navigate to the CloudFormation service.
 
 - Click on "Create stack". Specify the Template:
@@ -27,12 +27,12 @@ Tags include Owner, Environment=Production, Region (Modify in the function code)
 - Review and Create:
  **Note: Goto your email and confirm the subcription**
 
-#### Using the AWS CLI
+#### b. Using the AWS CLI
 ```bash
 aws cloudformation create-stack --stack-name <my-stack-name> \
-    --template-body file://auto-tag-resource.yaml \
+    --template-body file://cf-auto-tag-resources.yaml \
     --capabilities CAPABILITY_NAMED_IAM \
-    --parameters ParameterKey=pSupportingFilesBucket,ParameterValue=<my-bucket> ParameterKey=pSupportingFilesPrefix,ParameterValue=<my-prefix> \
+    --parameters ParameterKey=pSupportingFilesBucket,ParameterValue=<my-bucket> ParameterKey=pSupportingFilesPrefix,ParameterValue=<prefix/file.zip> ParameterKey=NotificationEmail,ParameterValue=<my-email> \
     --proflie <user>
 ```
  **Note: Goto your email and confirm the subcription**
