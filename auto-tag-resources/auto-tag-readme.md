@@ -37,7 +37,7 @@ aws cloudformation create-stack --stack-name <my-stack-name> \
 ```
  **Note: Goto your email and confirm the subcription**
 
-### 2. Test the Resources by creating a resource (ec2,rds,s3) without the appropriate tags
+### 2. Test: Create a resource (ec2,rds,s3) without the appropriate tags
 Console Example
 - On the console, navigate to EC2 > Images > AMI Catalog, search for any AMI in your region
 - Then navigate to EC2, create an instance without assigning any tags
@@ -50,7 +50,7 @@ aws ec2 run-instances --image-id <my-ami-id> --count 1 --instance-type <my-insta
 ```
 
 ### 3. Confirm the Tags were automatically assigned (Owner, Evironment, Region)
-
+Check on the console or use the command below
 ```bash
 aws ec2 describe-tags --filters "Name=resource-id,Values=<your-instance-id>"
 ```
