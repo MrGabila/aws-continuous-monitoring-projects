@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: deploys an EventBridge rule and a Lambda function to auto tag ec2, s3, and rds resources when created
+Metadata: {}
+
+Parameters:
+  pSupportingFilesBucket:
+    Type: String
+  pSupportingFilesPrefix:
+    Type: String
+  NotificationEmail:
+    Type: String
+
+Resources:
+  CreateTagsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - !Ref AWS::StackName
+              - create-tags-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:Describe*
+                  - s3:PutBucketTagging
+                  - s3:GetBucketTagging
+                  - rds:AddTagsToResource
+                  - rds:ListTagsForResource
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+      RoleName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - create-tags-role
+
+  CreateTagsEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Identify Untagged Resources
+      EventPattern:
+        source:
+          - aws.ec2
+          - aws.s3
+          - aws.rds
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+            - s3.amazonaws.com
+            - rds.amazonaws.com
+          eventName:
+            - RunInstances
+            - CreateBucket
+            - CreateDBInstance
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CreateTagsLambdaFunction.Arn
+          Id: identify-untagged-resources
+
+  CreateTagsLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CreateTagsLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CreateTagsEventRule.Arn
+  
+  CreateTagsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt CreateTagsLambdaRole.Arn
+      FunctionName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - create-tags
+      Code:
+        S3Bucket: !Ref pSupportingFilesBucket
+        S3Key: !Ref pSupportingFilesPrefix
+      Runtime: python3.9
+      Timeout: 60
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+  
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref NotificationEmail
+          Protocol: email
+
+Outputs:
+  SNSTopic:
+    Description: SNS topic to notify when resources are created without tags.
+    Value: !Ref NotificationTopic
