@@ -11,10 +11,8 @@ Parameters:
     Description: Slack Webhook URL to send notifications to Slack channel
   pFilesBucket:
     Type: String
-    Default: continuous-monitoring-project ##
   pFilesPrefix:
     Type: String
-    Default: alert-on-protected-actions/index.zip ##
 
 Resources:
   NotificationTopic:

@@ -4,11 +4,15 @@
     "ParameterValue": "CreateUser, CreateAccessKey, CreateRoute, AuthorizeSecurityGroupEgress, AuthorizeSecurityGroupIngress, CreateNetworkAclEntry, DeleteNetworkAcl, AttachRolePolicy, CreateVirtualMFADevice, DeactivateMFADevice, DeleteBucketPolicy, PutBucketPolicy, StopLogging"
   },
   {
-    "ParameterKey": "pEmailSubscription",
-    "ParameterValue": "me@email.com"
-  },
-  {
     "ParameterKey": "pSlackWebhookUrl",
     "ParameterValue": "paste-link-from-slack-webhookURL"
+  },
+  {
+    "ParameterKey": "pFilesBucket",
+    "ParameterValue": "bucket-name"
+  },
+  {
+    "ParameterKey": "pFilesPrefix",
+    "ParameterValue": "prefix/index.zip"
   }
 ]
