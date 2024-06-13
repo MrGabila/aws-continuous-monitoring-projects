@@ -1,10 +1,14 @@
 [
   {
     "ParameterKey": "pEvents",
-    "ParameterValue": "StopLogging, CreateNetworkAclEntry, CreateRoute, AuthorizeSecurityGroupEgress, AuthorizeSecurityGroupIngress, AttachInternetGateway, AttachVpnGateway, CreateVpcPeeringConnection, DeleteNetworkAcl, AttachRolePolicy, CreateUser, CreateVirtualMFADevice, DeactivateMFADevice, CreateAccessKey, CreateSAMLProvider, UpdateSAMLProvider, DeleteBucketPolicy, PutBucketAcl, PutBucketCors, PutBucketPolicy"
+    "ParameterValue": "CreateUser, CreateAccessKey, CreateRoute, AuthorizeSecurityGroupEgress, AuthorizeSecurityGroupIngress, CreateNetworkAclEntry, DeleteNetworkAcl, AttachRolePolicy, CreateVirtualMFADevice, DeactivateMFADevice, DeleteBucketPolicy, PutBucketPolicy, StopLogging"
   },
   {
     "ParameterKey": "pEmailSubscription",
     "ParameterValue": "me@email.com"
+  },
+  {
+    "ParameterKey": "pSlackWebhookUrl",
+    "ParameterValue": "paste-link-from-slack-webhookURL"
   }
 ]

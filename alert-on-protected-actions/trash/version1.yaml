@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: deploys an Event Rule, SNS, and Lambda function to alert when protected actions are performed
+Metadata: {}
+
+Parameters:
+  pEvents:
+    Type: CommaDelimitedList
+    Default: StopLogging, CreateNetworkAclEntry, CreateRoute, AuthorizeSecurityGroupEgress, AuthorizeSecurityGroupIngress, AttachInternetGateway, AttachVpnGateway, CreateVpcPeeringConnection, DeleteNetworkAcl, AttachRolePolicy, CreateUser, CreateVirtualMFADevice, DeactivateMFADevice, CreateAccessKey, CreateSAMLProvider, UpdateSAMLProvider, DeleteBucketPolicy, PutBucketAcl, PutBucketCors, PutBucketPolicy
+    Description: Comma-Separated List of events to trigger on
+  pSlackNotification:
+    Type: String
+    Description: Email address to subscribe to alerts
+
+Resources:
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - alert-on-events-topic
+      Subscription:
+        - Endpoint: !Ref pSlackNotification
+          Protocol: HTTP
+    
+  AlertOnEventsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - !Ref AWS::StackName
+              - alert-on-events-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+      RoleName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - alert-on-events-role
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Event Rule to Trigger Alerts
+      EventPattern:
+        detail:
+          eventName: !Ref pEvents
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt AlertOnEventsLambdaFunction.Arn
+          Id: check-for-alertable-events
+  
+  AlertOnEventsLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AlertOnEventsLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRule.Arn
+
+  AlertOnEventsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt AlertOnEventsLambdaRole.Arn
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Code:
+        ZipFile: !Join
+          - |+
+          - - import boto3
+            - import json
+            - import os
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(''Event:'' + json.dumps(event))'
+            - '    '
+            - '    sns_topic_arn = os.environ[''SNS_TOPIC_ARN'']'
+            - ''
+            - '    user_name = '''''
+            - '    try:'
+            - '        # IAM user'
+            - '        user_name = event[''detail''][''userIdentity''][''userName'']'
+            - '    except:'
+            - '        # assumed IAM role'
+            - '        user_name = event[''detail''][''userIdentity''][''arn'']'
+            - '        # parse the user name from the arn'
+            - '        user_name = user_name.rsplit(''/'',1)[-1]'
+            - '        '
+            - '    event_name = event[''detail''][''eventName'']'
+            - '    '
+            - '    sns_client = boto3.client(''sns'')'
+            - '    '
+            - '    message = user_name + '' made API call '' + event_name'
+            - '    print(message)'
+            - '    sns_client.publish('
+            - '        TopicArn=sns_topic_arn,'
+            - '        Message=message'
+            - '        )'
+            - '    return {'
+            - '        ''statusCode'': 200,'
+            - '        ''body'': message'
+            - '    }'
+            - ''
+      Runtime: python3.9
+      Timeout: 60

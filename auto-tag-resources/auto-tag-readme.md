@@ -5,7 +5,7 @@ Tags include Owner, Environment=Production, Region (Modify in the function code)
 ## Prerequisites
 
 1. Upload the Lambda function code (auto-tag-resources.zip) to S3 bucket. 
-2. Ensure a Cloudtrail > Trails is created and **log Events=Management, Status=logging** 
+2. Ensure a Cloudtrail > Trails is created with **log Events=Management, Status=logging** 
 
 ## Steps
 
@@ -16,7 +16,7 @@ Tags include Owner, Environment=Production, Region (Modify in the function code)
 
 - Click on "Create stack". Specify the Template:
 
-- Choose "Upload a template file". Upload the CloudFormation template file.
+- Choose "Upload a template file".
 
 - Configure Stack Details: Enter a stack name.
 - Provide the required parameters:

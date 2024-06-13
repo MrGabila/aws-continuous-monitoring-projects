@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: deploys an Event Rule, SNS, and Lambda function to alert when protected actions are performed
+
+Parameters:
+  pEvents:
+    Type: CommaDelimitedList
+    Default: CreateUser, CreateAccessKey, CreateRoute, AuthorizeSecurityGroupEgress, AuthorizeSecurityGroupIngress, CreateNetworkAclEntry, DeleteNetworkAcl, AttachRolePolicy, CreateVirtualMFADevice, DeactivateMFADevice, DeleteBucketPolicy, PutBucketPolicy, StopLogging
+    Description: Comma-Separated List of events to trigger on
+  pSlackWebhookUrl:
+    Type: String
+    Description: Slack Webhook URL to send notifications to Slack channel
+  pFilesBucket:
+    Type: String
+    Default: continuous-monitoring-project ##
+  pFilesPrefix:
+    Type: String
+    Default: alert-on-protected-actions/index.zip ##
+
+Resources:
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - alert-on-events-topic
+
+  AlertOnEventsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - !Ref AWS::StackName
+              - alert-on-events-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+      RoleName: !Join
+        - '-'
+        - - !Ref AWS::StackName
+          - alert-on-events-role
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Event Rule to Trigger Alerts
+      EventPattern:
+        detail:
+          eventName: !Ref pEvents
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt AlertOnEventsLambdaFunction.Arn
+          Id: check-for-alertable-events
+
+  AlertOnEventsLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AlertOnEventsLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRule.Arn
+
+  AlertOnEventsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt AlertOnEventsLambdaRole.Arn
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          SLACK_WEBHOOK_URL: !Ref pSlackWebhookUrl
+      Code:
+        S3Bucket: !Ref pFilesBucket
+        S3Key: !Ref pFilesPrefix
+      Runtime: python3.9
+      Timeout: 60

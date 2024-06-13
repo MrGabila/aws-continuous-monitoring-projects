@@ -1,13 +1,13 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: deploys an EventBridge rule and a Lambda function to auto tag ec2, s3, and rds resources when created
+Description: deploys an Event Rule, SNS, and Lambda function to auto tag ec2, s3, and rds resources when created
 Metadata: {}
 
 Parameters:
-  pSupportingFilesBucket:
+  pFilesBucket:
     Type: String
-  pSupportingFilesPrefix:
+  pFilesPrefix:
     Type: String
-  NotificationEmail:
+  pNotificationEmail:
     Type: String
 
 Resources:
@@ -97,8 +97,8 @@ Resources:
         - - !Ref AWS::StackName
           - create-tags
       Code:
-        S3Bucket: !Ref pSupportingFilesBucket
-        S3Key: !Ref pSupportingFilesPrefix
+        S3Bucket: !Ref pFilesBucket
+        S3Key: !Ref pFilesPrefix
       Runtime: python3.9
       Timeout: 60
       Environment:
@@ -109,7 +109,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
-        - Endpoint: !Ref NotificationEmail
+        - Endpoint: !Ref pNotificationEmail
           Protocol: email
 
 Outputs:
